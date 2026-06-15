@@ -193,6 +193,34 @@ body {
   background: transparent;
 }
 
+.van-field__control,
+.van-field__label,
+.van-cell__title,
+.van-uploader__upload,
+.van-uploader__upload-icon,
+.van-uploader__upload-text {
+  color: #3f352d;
+}
+
+.van-field__control::placeholder,
+.van-field__control::-webkit-input-placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: #6f6257;
+  opacity: 1;
+}
+
+.van-field__control:disabled,
+.van-field__control[readonly] {
+  color: #3f352d;
+  -webkit-text-fill-color: #3f352d;
+}
+
+.van-toast,
+.van-toast__text {
+  color: #fffaf1;
+}
+
 .van-cell-group--inset {
   margin: 0;
 }

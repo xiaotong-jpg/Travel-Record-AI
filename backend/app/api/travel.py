@@ -6,8 +6,15 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.travel import TravelRecord
-from app.schemas.travel import TravelGenerateRequest, TravelRecordResponse, YearSummaryResponse
+from app.schemas.travel import (
+    TravelGenerateRequest,
+    TravelPosterGenerateRequest,
+    TravelPosterGenerateResponse,
+    TravelRecordResponse,
+    YearSummaryResponse,
+)
 from app.services.vivo_ai import call_vivo_travel, call_vivo_year_summary
+from app.services.vivo_image import generate_travel_poster
 
 router = APIRouter()
 
@@ -35,6 +42,7 @@ def to_response(record: TravelRecord) -> TravelRecordResponse:
         "chat_session_id": record.chat_session_id,
         "image_urls": record.image_urls or [],
         "hand_account_layout": record.hand_account_layout,
+        "generated_image_url": record.exported_long_image_url,
         "created_at": record.created_at,
     }
     return TravelRecordResponse(**data)
@@ -82,6 +90,22 @@ def get_travel(record_id: int, db: Session = Depends(get_db)) -> TravelRecordRes
     if not record:
         raise HTTPException(status_code=404, detail="旅行记录不存在")
     return to_response(record)
+
+
+@router.post("/{record_id}/generate-poster", response_model=TravelPosterGenerateResponse)
+async def generate_poster(
+    record_id: int,
+    payload: TravelPosterGenerateRequest,
+    db: Session = Depends(get_db),
+) -> TravelPosterGenerateResponse:
+    record = db.get(TravelRecord, record_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="旅行记录不存在")
+    image_url = await generate_travel_poster(to_response(record), payload.style)
+    record.exported_long_image_url = image_url
+    record.style = payload.style
+    db.commit()
+    return TravelPosterGenerateResponse(image_url=image_url)
 
 
 @router.post("/year-summary", response_model=YearSummaryResponse)

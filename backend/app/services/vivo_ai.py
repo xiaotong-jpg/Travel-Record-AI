@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date
 
 from fastapi import HTTPException
@@ -112,7 +113,7 @@ async def call_vivo_travel(payload: TravelGenerateRequest, image_urls: list[str]
     if not settings.vivo_app_key:
         if settings.vivo_mock_when_no_key:
             result = mock_travel_result(payload, image_urls)
-            return result, result.model_dump_json(ensure_ascii=False)
+            return result, json.dumps(result.model_dump(mode="json"), ensure_ascii=False)
         raise HTTPException(status_code=500, detail="后端未配置 VIVO_APP_KEY")
 
     content = await chat_completion(

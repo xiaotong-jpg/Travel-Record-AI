@@ -13,7 +13,8 @@ defineProps({ images: { type: Array, default: () => [] } })
 function assetUrl(url) {
   if (!url) return ''
   if (url.startsWith('http') || url.startsWith('data:')) return url
-  return url
+  if (url.startsWith('/uploads')) return url
+  return `/uploads/${url.replace(/^\/+/, '')}`
 }
 </script>
 

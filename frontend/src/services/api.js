@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const http = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: 70000
+  timeout: 140000
 })
 
 export function generateTravel(data) {
@@ -15,6 +15,10 @@ export function listTravels() {
 
 export function getTravel(id) {
   return http.get(`/travel/${id}`)
+}
+
+export function generateTravelPoster(id, style) {
+  return http.post(`/travel/${id}/generate-poster`, { style })
 }
 
 export function getYearSummary() {
@@ -39,4 +43,8 @@ export function generateTravelFromChat({ sessionId, travelInfo, images }) {
 
 export function recommendNearby(data) {
   return http.post('/recommend/nearby', data)
+}
+
+export function resolveLocation(data) {
+  return http.post('/recommend/resolve-location', data)
 }

@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     vivo_app_key: str = ""
     vivo_api_base: str = "https://api-ai.vivo.com.cn/v1"
     vivo_model: str = "Doubao-Seed-2.0-mini"
+    vivo_image_model: str = "Doubao-Seedream-4.5"
     vivo_mock_when_no_key: bool = True
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 

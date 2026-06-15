@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 TravelStyle = Literal["手账风", "明信片风", "朋友圈风", "小红书风", "电影旁白风", "简洁记录风"]
@@ -44,6 +44,7 @@ class TravelRecordResponse(TravelAIResult):
     chat_session_id: Optional[str] = None
     image_urls: list[str] = Field(default_factory=list)
     hand_account_layout: Optional[dict[str, Any]] = None
+    generated_image_url: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -51,6 +52,14 @@ class TravelRecordResponse(TravelAIResult):
 
 class YearSummaryResponse(BaseModel):
     summary: str
+
+
+class TravelPosterGenerateRequest(BaseModel):
+    style: str = "手账风"
+
+
+class TravelPosterGenerateResponse(BaseModel):
+    image_url: str
 
 
 class ChatMessageRequest(BaseModel):
@@ -75,6 +84,13 @@ class RecommendRequest(BaseModel):
     visited_places: list[str] = Field(default_factory=list)
 
 
+class LocationResolveRequest(BaseModel):
+    latitude: float
+    longitude: float
+    preferences: list[str] = Field(default_factory=list)
+    visited_places: list[str] = Field(default_factory=list)
+
+
 class RecommendationItem(BaseModel):
     name: str
     reason: str
@@ -90,3 +106,21 @@ class RecommendResponse(BaseModel):
     postcard_text: str = ""
     summary: str = ""
     recommendations: list[RecommendationItem] = Field(default_factory=list)
+
+
+class LocationResolveResponse(RecommendResponse):
+    city: str = ""
+    current_place: str = ""
+    description: str = ""
+    confidence: str = "low"
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def normalize_confidence(cls, value: Any) -> str:
+        if isinstance(value, (int, float)):
+            if value >= 0.8:
+                return "high"
+            if value >= 0.45:
+                return "medium"
+            return "low"
+        return str(value or "low")

@@ -3,6 +3,15 @@
     <h1 class="page-title">回忆</h1>
     <p class="page-subtitle">按时间倒序收纳每一页旅程，像慢慢翻开一本数字旅行手账。</p>
 
+    <section class="soft-card year-entry" @click="router.push('/year-review')">
+      <div>
+        <p class="card-meta">年度总结</p>
+        <h2>这一年，你的足迹</h2>
+        <span>查看气泡地图式旅行回顾</span>
+      </div>
+      <van-icon name="arrow" />
+    </section>
+
     <van-pull-refresh v-model="refreshing" @refresh="loadRecords">
       <section v-if="records.length" class="memory-list">
         <article v-for="item in records" :key="item.id" class="soft-card memory-card" @click="goDetail(item.id)">
@@ -52,6 +61,31 @@ onMounted(loadRecords)
 </script>
 
 <style scoped>
+.year-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+
+.year-entry h2 {
+  margin: 4px 0 6px;
+  color: #123f58;
+  font-size: 20px;
+}
+
+.year-entry span {
+  color: #6f6257;
+  font-size: 13px;
+}
+
+.year-entry .van-icon {
+  color: #55777d;
+  font-size: 20px;
+}
+
 .memory-list {
   display: grid;
   gap: 12px;
