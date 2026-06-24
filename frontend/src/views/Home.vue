@@ -25,6 +25,46 @@
       </button>
     </section>
 
+    <section class="memory-section">
+      <div class="section-head memory-head">
+        <div>
+          <p class="card-meta">往日回忆</p>
+          <h2>偶遇旅途中的一天</h2>
+        </div>
+        <van-button
+          v-if="memoryCandidates.length > 1"
+          size="mini"
+          plain
+          hairline
+          color="#55777d"
+          icon="replay"
+          @click="pickMemory"
+        >
+          换一篇
+        </van-button>
+      </div>
+
+      <button
+        v-if="memoryRecord"
+        type="button"
+        class="memory-cover"
+        @click="router.push(`/travel/${memoryRecord.id}`)"
+      >
+        <img :src="assetUrl(memoryRecord.image_urls[0])" alt="" />
+        <span class="memory-shade"></span>
+        <span class="memory-copy">
+          <small>来自你的旅行日志</small>
+          <strong>{{ memoryTitle }}</strong>
+          <em>打开这篇日志 <van-icon name="arrow" /></em>
+        </span>
+      </button>
+
+      <button v-else type="button" class="memory-empty soft-card" @click="router.push('/chat-generate')">
+        <van-icon name="photograph" />
+        <span>上传旅行照片并生成日志后，往日回忆会出现在这里。</span>
+      </button>
+    </section>
+
     <section class="soft-card insight-card">
       <div class="section-head">
         <div>
@@ -80,6 +120,7 @@ import { listTravels } from '../services/api'
 const router = useRouter()
 const records = ref([])
 const promptIndex = ref(0)
+const memoryRecord = ref(null)
 
 const prompts = [
   '今天有没有一个画面，值得被贴进手账里？',
@@ -111,6 +152,12 @@ const heroText = computed(() => (
 const currentPrompt = computed(() => prompts[promptIndex.value % prompts.length])
 const cityCount = computed(() => new Set(records.value.map((item) => cityName(item.place))).size)
 const photoCount = computed(() => records.value.reduce((sum, item) => sum + (item.image_urls?.length || 0), 0))
+const memoryCandidates = computed(() => records.value.filter((item) => item.image_urls?.length))
+const memoryTitle = computed(() => {
+  if (!memoryRecord.value) return ''
+  const scene = memoryRecord.value.place || memoryRecord.value.title || '旅途中'
+  return `${memoryDate(memoryRecord.value.travel_date)}，你正在${scene}`
+})
 const nextTitle = computed(() => (records.value.length >= 3 ? '适合生成年度足迹了' : '先积累几段旅行片刻'))
 const nextText = computed(() => (
   records.value.length >= 3
@@ -126,10 +173,34 @@ function refreshPrompt() {
   promptIndex.value += 1
 }
 
+function memoryDate(value) {
+  if (!value) return '那一天'
+  const [year, month, day] = String(value).split('-').map(Number)
+  return `${year}年${month}月${day}日`
+}
+
+function assetUrl(url) {
+  if (!url) return ''
+  if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('/uploads')) return url
+  return `/uploads/${url.replace(/^\/+/, '')}`
+}
+
+function pickMemory() {
+  const candidates = memoryCandidates.value
+  if (!candidates.length) {
+    memoryRecord.value = null
+    return
+  }
+  const alternatives = candidates.filter((item) => item.id !== memoryRecord.value?.id)
+  const pool = alternatives.length ? alternatives : candidates
+  memoryRecord.value = pool[Math.floor(Math.random() * pool.length)]
+}
+
 onMounted(async () => {
   try {
     const { data } = await listTravels()
     records.value = data
+    pickMemory()
   } catch (error) {
     showToast(error?.response?.data?.detail || '读取首页数据失败')
   }
@@ -227,6 +298,98 @@ onMounted(async () => {
 .action-grid span {
   color: #7b6f66;
   font-size: 12px;
+}
+
+.memory-section {
+  position: relative;
+  z-index: 1;
+  margin-top: 20px;
+}
+
+.memory-head {
+  margin: 0 2px 10px;
+}
+
+.memory-head h2 {
+  margin: 2px 0 0;
+  color: #173d52;
+  font-size: 18px;
+}
+
+.memory-cover {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 230px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 14px;
+  color: #fff;
+  text-align: left;
+  background: #65766f;
+  box-shadow: var(--shadow-card);
+}
+
+.memory-cover img,
+.memory-shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.memory-cover img {
+  object-fit: cover;
+}
+
+.memory-shade {
+  background: linear-gradient(180deg, rgba(20, 32, 37, 0.02) 24%, rgba(17, 30, 36, 0.82) 100%);
+}
+
+.memory-copy {
+  position: absolute;
+  inset: auto 18px 18px;
+  display: grid;
+  gap: 7px;
+}
+
+.memory-copy small {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+}
+
+.memory-copy strong {
+  max-width: 310px;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 22px;
+  line-height: 1.4;
+}
+
+.memory-copy em {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 3px;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.memory-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 92px;
+  color: #6f6257;
+  text-align: left;
+  font: inherit;
+}
+
+.memory-empty .van-icon {
+  flex: 0 0 auto;
+  color: #55777d;
+  font-size: 28px;
 }
 
 .insight-card {

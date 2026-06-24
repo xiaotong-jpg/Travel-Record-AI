@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 
 
 TravelStyle = Literal["手账风", "明信片风", "朋友圈风", "小红书风", "电影旁白风", "简洁记录风"]
+PosterStyle = Literal["手账风", "小红书风", "清新风", "胶片风", "文艺风"]
 
 
 class TravelGenerateRequest(BaseModel):
@@ -55,7 +56,7 @@ class YearSummaryResponse(BaseModel):
 
 
 class TravelPosterGenerateRequest(BaseModel):
-    style: str = "手账风"
+    style: PosterStyle = "手账风"
 
 
 class TravelPosterGenerateResponse(BaseModel):

@@ -12,11 +12,6 @@
       <div class="wash wash-left"></div>
       <div class="wash wash-right"></div>
 
-      <div class="poster-actions no-export">
-        <van-button round icon="arrow-left" @click="router.back()" />
-        <van-button round icon="share-o" @click="exportImage" />
-      </div>
-
       <header class="poster-header">
         <p class="poster-title">旅行日志</p>
         <div class="title-divider"><span></span><i></i><span></span></div>
@@ -41,7 +36,6 @@
         <div v-if="photos.length" class="photo-board" :class="{ single: photos.length === 1 }">
           <figure v-for="(photo, index) in featuredPhotos" :key="photo + index" class="polaroid" :class="`tilt-${index % 2}`">
             <img :src="assetUrl(photo)" alt="旅行照片" />
-            <figcaption>{{ photoCaption(index) }}</figcaption>
           </figure>
         </div>
         <div v-else class="empty-photo">
@@ -54,7 +48,6 @@
         <div v-if="extraPhotos.length" class="round-photo-row">
           <figure v-for="(photo, index) in extraPhotos" :key="photo + index" class="round-photo">
             <img :src="assetUrl(photo)" alt="旅行照片" />
-            <figcaption>{{ extraCaption(index) }}</figcaption>
           </figure>
         </div>
 
@@ -155,15 +148,6 @@ function assetUrl(url) {
   return `/uploads/${url.replace(/^\/+/, '')}`
 }
 
-function photoCaption(index) {
-  const fallbacks = [props.record.place, props.record.mood, selectedStyle.value].filter(Boolean)
-  return props.record.stickers?.[index] || props.record.mood_tags?.[index] || fallbacks[index] || `照片 ${index + 1}`
-}
-
-function extraCaption(index) {
-  return props.record.stickers?.[index + 2] || props.record.mood_tags?.[index + 2] || '旅途片刻'
-}
-
 async function generatePoster() {
   await generatePosterWithStyle(selectedStyle.value)
 }
@@ -260,7 +244,7 @@ async function exportImage() {
   position: relative;
   overflow: hidden;
   min-height: 860px;
-  padding: 72px 28px 24px;
+  padding: 34px 28px 24px;
   border-radius: 24px;
   color: #152f3f;
   background:
@@ -319,23 +303,6 @@ async function exportImage() {
   width: 158px;
   height: 82px;
   background: rgba(141, 166, 173, 0.18);
-}
-
-.poster-actions {
-  position: absolute;
-  inset: 24px 22px auto;
-  z-index: 4;
-  display: flex;
-  justify-content: space-between;
-}
-
-.poster-actions :deep(.van-button) {
-  width: 48px;
-  height: 48px;
-  color: #17455e;
-  background: rgba(250, 240, 224, 0.92);
-  border: 0;
-  box-shadow: 0 8px 20px rgba(88, 66, 42, 0.18);
 }
 
 .poster-header {
@@ -486,7 +453,7 @@ async function exportImage() {
 .polaroid {
   position: relative;
   margin: 0;
-  padding: 8px 8px 28px;
+  padding: 8px;
   background: #fffdf8;
   box-shadow: 0 10px 24px rgba(83, 62, 38, 0.16);
 }
@@ -515,17 +482,6 @@ async function exportImage() {
   width: 100%;
   aspect-ratio: 1 / 0.82;
   object-fit: cover;
-}
-
-.polaroid figcaption {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 6px;
-  color: #8b3528;
-  font-family: "KaiTi", "STKaiti", serif;
-  font-size: 16px;
-  text-align: center;
 }
 
 .empty-photo {
@@ -562,13 +518,6 @@ async function exportImage() {
   object-fit: cover;
   background: #fffaf1;
   box-shadow: 0 6px 16px rgba(77, 55, 34, 0.14);
-}
-
-.round-photo figcaption {
-  margin-top: 6px;
-  color: #873728;
-  font-family: "KaiTi", "STKaiti", serif;
-  font-size: 14px;
 }
 
 .note-row {
