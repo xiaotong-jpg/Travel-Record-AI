@@ -5,10 +5,11 @@
       <div class="poster-toolbar">
         <van-button round icon="down" @click="downloadPoster">保存图片</van-button>
         <van-button round icon="replay" :loading="generating" @click="generatePoster">重新生成</van-button>
+        <van-button round icon="revoke" @click="backToTemplate">返回模板</van-button>
       </div>
     </section>
 
-    <section v-else ref="pageRef" class="journal-poster">
+    <section v-else ref="pageRef" class="journal-poster" :class="[styleClass, layoutClass]">
       <div class="wash wash-left"></div>
       <div class="wash wash-right"></div>
 
@@ -66,9 +67,9 @@
       <div class="panel-head">
         <div>
           <h2>选择喜欢的风格</h2>
-          <p>{{ posterUrl ? '点击风格会重新调用大模型生成对应图片' : '调用大模型生成一张图片类型旅行日志' }}</p>
+          <p>{{ posterUrl ? '本次 AI 图片已生成，可按当前风格重新生成' : '点击生成后展示 AI 图片日志' }}</p>
         </div>
-        <span>{{ posterUrl ? '当前 ' + selectedStyle : 'AI 图片' }}</span>
+        <span>{{ selectedStyle }}</span>
       </div>
       <div class="style-grid">
         <button
@@ -77,7 +78,6 @@
           class="style-chip"
           :class="{ active: selectedStyle === style.name }"
           type="button"
-          :disabled="generating"
           @click="selectStyle(style.name)"
         >
           <van-icon :name="style.icon" />
@@ -93,8 +93,8 @@
     </section>
 
     <div class="export-bar">
-      <van-button block type="primary" class="primary-btn" :loading="exporting" @click="posterUrl ? downloadPoster() : exportImage()">
-        {{ posterUrl ? '保存 AI 图片日志' : '导出当前手账长图' }}
+      <van-button block type="primary" class="primary-btn" :loading="exporting" @click="canUsePoster ? downloadPoster() : exportImage()">
+        {{ canUsePoster ? '保存 AI 图片日志' : '导出当前手账长图' }}
       </van-button>
     </div>
   </article>
@@ -102,7 +102,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { showToast } from 'vant'
+import { closeToast, showLoadingToast, showToast } from 'vant'
 import { useRouter } from 'vue-router'
 import html2canvas from 'html2canvas'
 import { generateTravelPoster } from '../services/api'
@@ -112,9 +112,41 @@ const router = useRouter()
 const pageRef = ref(null)
 const exporting = ref(false)
 const generating = ref(false)
-const posterUrl = ref(props.record.generated_image_url || '')
+const posterUrl = ref('')
 const selectedStyle = ref(props.record.style || '手账风')
-const generatedStyle = ref(props.record.generated_image_url ? selectedStyle.value : '')
+const generatedStyle = ref('')
+const canUsePoster = computed(() => Boolean(posterUrl.value))
+const layoutClass = computed(() => {
+  const explicit = props.record.hand_account_layout?.template
+  if (explicit) return `layout-${explicit}`
+  const seed = [
+    props.record.id,
+    props.record.place,
+    props.record.travel_date,
+    props.record.title,
+    props.record.memory,
+    props.record.content,
+    (props.record.image_urls || []).length
+  ].filter(Boolean).join('|')
+  const variants = ['lead-first', 'photo-first', 'essay-first', 'gallery']
+  return `layout-${variants[stableHash(seed) % variants.length]}`
+})
+const styleClass = computed(() => {
+  const map = {
+    '手账风': 'style-handbook',
+    '小红书风': 'style-redbook',
+    '清新风': 'style-fresh',
+    '胶片风': 'style-film',
+    '文艺风': 'style-literary'
+  }
+  return map[selectedStyle.value] || 'style-handbook'
+})
+
+function stableHash(value) {
+  return Array.from(String(value || 'travel')).reduce((sum, char) => {
+    return (sum * 31 + char.charCodeAt(0)) >>> 0
+  }, 7)
+}
 
 const styles = [
   { name: '手账风', icon: 'notes-o' },
@@ -149,13 +181,16 @@ function assetUrl(url) {
 }
 
 async function generatePoster() {
+  if (!photos.value.length) {
+    showToast({ message: '这篇日志没有上传图片，无法生成 AI 图片日志', duration: 3500 })
+    return
+  }
   await generatePosterWithStyle(selectedStyle.value)
 }
 
-async function selectStyle(styleName) {
+function selectStyle(styleName) {
   if (generating.value) return
   selectedStyle.value = styleName
-  await generatePosterWithStyle(styleName)
 }
 
 async function generatePosterWithStyle(styleName) {
@@ -170,6 +205,11 @@ async function generatePosterWithStyle(styleName) {
   } finally {
     generating.value = false
   }
+}
+
+function backToTemplate() {
+  posterUrl.value = ''
+  generatedStyle.value = ''
 }
 
 function downloadPoster() {
@@ -655,6 +695,506 @@ async function exportImage() {
   display: none;
 }
 
+.layout-lead-first .paper-card,
+.layout-photo-first .paper-card,
+.layout-essay-first .paper-card,
+.layout-note-first .paper-card,
+.layout-gallery .paper-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-lead-first .lead-text { order: 1; }
+.layout-lead-first .photo-board,
+.layout-lead-first .empty-photo { order: 2; }
+.layout-lead-first .body-text { order: 3; }
+.layout-lead-first .round-photo-row { order: 4; }
+.layout-lead-first .note-row { order: 5; }
+
+.layout-photo-first .quote-mark {
+  right: 18px;
+  left: auto;
+  top: 16px;
+}
+
+.layout-photo-first .photo-board,
+.layout-photo-first .empty-photo {
+  order: 1;
+  margin-top: 0;
+}
+
+.layout-photo-first .lead-text {
+  order: 2;
+  padding-left: 0;
+  margin-top: 8px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.layout-photo-first .body-text { order: 3; }
+.layout-photo-first .round-photo-row { order: 4; }
+.layout-photo-first .note-row { order: 5; }
+.layout-photo-first .polaroid:first-child img { aspect-ratio: 1 / 0.72; }
+
+.layout-essay-first .lead-text {
+  order: 1;
+  padding-left: 34px;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 19px;
+}
+
+.layout-essay-first .body-text {
+  order: 2;
+  margin-top: 18px;
+}
+
+.layout-essay-first .photo-board,
+.layout-essay-first .empty-photo {
+  order: 3;
+  width: 82%;
+  align-self: flex-end;
+}
+
+.layout-essay-first .round-photo-row { order: 4; }
+.layout-essay-first .note-row { order: 5; }
+.layout-essay-first .photo-board:not(.single) { grid-template-columns: 1fr; }
+.layout-essay-first .polaroid { transform: rotate(1deg); }
+
+.layout-note-first .quote-mark { display: none; }
+.layout-note-first .note-row {
+  order: 1;
+  align-items: center;
+  margin: 0 0 22px;
+}
+
+.layout-note-first .memo-note {
+  max-width: none;
+  width: 72%;
+}
+
+.layout-note-first .heart-line {
+  font-size: 38px;
+}
+
+.layout-note-first .lead-text {
+  order: 2;
+  padding-left: 0;
+}
+
+.layout-note-first .photo-board,
+.layout-note-first .empty-photo { order: 3; }
+.layout-note-first .body-text { order: 4; }
+.layout-note-first .round-photo-row { order: 5; }
+
+.layout-gallery .quote-mark { display: none; }
+.layout-gallery .photo-board,
+.layout-gallery .empty-photo {
+  order: 1;
+  margin-top: 0;
+}
+
+.layout-gallery .photo-board:not(.single) {
+  grid-template-columns: 1.18fr 0.82fr;
+  align-items: stretch;
+}
+
+.layout-gallery .polaroid {
+  padding: 6px;
+  transform: none;
+}
+
+.layout-gallery .polaroid:first-child {
+  grid-row: span 2;
+}
+
+.layout-gallery .polaroid:first-child img {
+  height: 100%;
+  aspect-ratio: 1 / 1.18;
+}
+
+.layout-gallery .lead-text {
+  order: 2;
+  padding-left: 0;
+  margin-top: 10px;
+}
+
+.layout-gallery .round-photo-row {
+  order: 3;
+  justify-content: center;
+}
+
+.layout-gallery .body-text { order: 4; }
+.layout-gallery .note-row { order: 5; }
+.style-redbook {
+  min-height: 760px;
+  padding: 24px 18px;
+  color: #26272b;
+  background:
+    linear-gradient(135deg, rgba(255, 86, 106, 0.10), transparent 32%),
+    linear-gradient(315deg, rgba(255, 200, 72, 0.16), transparent 34%),
+    #fffaf8;
+}
+
+.style-redbook .wash,
+.style-redbook .title-divider,
+.style-redbook::before,
+.style-redbook::after {
+  display: none;
+}
+
+.style-redbook .poster-header {
+  text-align: left;
+}
+
+.style-redbook .poster-title {
+  color: #241f23;
+  font-family: Arial, "Microsoft YaHei", sans-serif;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.style-redbook .place-block {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.style-redbook .date-line {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #e94f64;
+  font-weight: 700;
+}
+
+.style-redbook .place-line h1 {
+  color: #231f20;
+  font-family: Arial, "Microsoft YaHei", sans-serif;
+  font-size: 32px;
+  font-weight: 900;
+}
+
+.style-redbook .place-line .van-icon {
+  background: #ff5b6d;
+}
+
+.style-redbook .stamp-card {
+  position: static;
+  width: 82px;
+  height: 54px;
+  border: 0;
+  border-radius: 18px;
+  color: #fff;
+  background: #ff5b6d;
+  transform: rotate(0deg);
+}
+
+.style-redbook .paper-card {
+  margin-top: 18px;
+  padding: 16px;
+  border: 0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 12px 26px rgba(233, 79, 100, 0.16);
+}
+
+.style-redbook .quote-mark,
+.style-redbook .heart-line {
+  display: none;
+}
+
+.style-redbook .lead-text {
+  padding-left: 0;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.65;
+}
+
+.style-redbook .photo-board {
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.style-redbook .polaroid {
+  overflow: hidden;
+  padding: 0;
+  border-radius: 16px;
+  box-shadow: none;
+  transform: none;
+}
+
+.style-redbook .polaroid::before {
+  display: none;
+}
+
+.style-redbook .memo-note {
+  max-width: none;
+  border-radius: 16px;
+  color: #5d2931;
+  background: #fff0f2;
+  transform: none;
+}
+
+.style-fresh {
+  min-height: 760px;
+  color: #1f4652;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(158, 221, 204, 0.32), transparent 28%),
+    radial-gradient(circle at 86% 78%, rgba(255, 231, 148, 0.26), transparent 28%),
+    #fbfffc;
+}
+
+.style-fresh .poster-title,
+.style-fresh .place-line h1 {
+  color: #245d69;
+  font-family: Arial, "Microsoft YaHei", sans-serif;
+  font-weight: 600;
+}
+
+.style-fresh .title-divider span,
+.style-fresh .title-divider i {
+  background: #8fd5c5;
+}
+
+.style-fresh .place-line .van-icon {
+  background: #72b9ad;
+}
+
+.style-fresh .stamp-card {
+  border-color: rgba(114, 185, 173, 0.45);
+  color: #378173;
+  border-radius: 999px;
+  transform: rotate(4deg);
+}
+
+.style-fresh .paper-card {
+  border: 0;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 14px 34px rgba(76, 139, 129, 0.13);
+}
+
+.style-fresh .quote-mark {
+  color: rgba(143, 213, 197, 0.7);
+}
+
+.style-fresh .photo-board {
+  grid-template-columns: 1fr;
+}
+
+.style-fresh .polaroid {
+  overflow: hidden;
+  padding: 0;
+  border-radius: 26px 26px 8px 26px;
+  box-shadow: 0 12px 24px rgba(84, 145, 138, 0.14);
+  transform: none;
+}
+
+.style-fresh .polaroid::before {
+  display: none;
+}
+
+.style-fresh .polaroid img {
+  aspect-ratio: 1 / 0.7;
+}
+
+.style-fresh .memo-note {
+  border-radius: 18px;
+  background: rgba(226, 247, 239, 0.92);
+  transform: rotate(1deg);
+}
+
+.style-film {
+  min-height: 760px;
+  color: #f7e8cf;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.30)),
+    radial-gradient(circle at 26% 20%, rgba(214, 127, 54, 0.28), transparent 34%),
+    #2a241f;
+}
+
+.style-film .wash,
+.style-film .title-divider,
+.style-film::before,
+.style-film::after {
+  display: none;
+}
+
+.style-film .poster-title,
+.style-film .place-line h1 {
+  color: #ffe0ae;
+  font-family: Georgia, serif;
+}
+
+.style-film .date-line,
+.style-film .lead-text,
+.style-film .body-text {
+  color: #f3dec2;
+}
+
+.style-film .place-line .van-icon {
+  color: #2a241f;
+  background: #f2c276;
+}
+
+.style-film .stamp-card {
+  border-color: rgba(242, 194, 118, 0.72);
+  color: #f2c276;
+  border-radius: 4px;
+  transform: rotate(0deg);
+}
+
+.style-film .paper-card {
+  border: 1px solid rgba(242, 194, 118, 0.32);
+  border-radius: 6px;
+  background: rgba(24, 20, 18, 0.72);
+  box-shadow: inset 0 0 0 10px rgba(0, 0, 0, 0.18);
+}
+
+.style-film .photo-board {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.style-film .polaroid {
+  padding: 12px 12px 26px;
+  background: #161412;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
+  transform: none;
+}
+
+.style-film .polaroid::before {
+  left: 0;
+  right: 0;
+  top: auto;
+  bottom: 6px;
+  height: 10px;
+  background: repeating-linear-gradient(90deg, #f1d19f 0 8px, transparent 8px 16px);
+  transform: none;
+}
+
+.style-film .memo-note {
+  color: #321f15;
+  background: #e0b06d;
+  transform: rotate(0deg);
+}
+
+.style-film .heart-line {
+  color: #f2c276;
+}
+
+.style-literary {
+  min-height: 760px;
+  padding-top: 42px;
+  color: #1e252b;
+  background:
+    linear-gradient(90deg, transparent 0 78%, rgba(24, 37, 45, 0.05) 78% 79%, transparent 79%),
+    #fffdf8;
+}
+
+.style-literary .wash,
+.style-literary::before,
+.style-literary::after,
+.style-literary .place-line .van-icon,
+.style-literary .heart-line {
+  display: none;
+}
+
+.style-literary .poster-header,
+.style-literary .place-block {
+  text-align: left;
+}
+
+.style-literary .poster-title {
+  color: #15191d;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.style-literary .title-divider {
+  justify-content: flex-start;
+}
+
+.style-literary .title-divider span {
+  width: 78px;
+  background: #1e252b;
+}
+
+.style-literary .title-divider i {
+  display: none;
+}
+
+.style-literary .date-line {
+  margin-left: 0;
+  color: #7d6c58;
+  font-style: italic;
+}
+
+.style-literary .place-line h1 {
+  max-width: 100%;
+  color: #15191d;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 36px;
+  font-weight: 400;
+}
+
+.style-literary .stamp-card {
+  top: -14px;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  color: #1e252b;
+  transform: rotate(0deg);
+}
+
+.style-literary .paper-card {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.style-literary .quote-mark {
+  display: none;
+}
+
+.style-literary .lead-text {
+  padding-left: 0;
+  color: #20262c;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 20px;
+  line-height: 1.9;
+}
+
+.style-literary .photo-board {
+  grid-template-columns: 1fr;
+  margin: 22px 0;
+}
+
+.style-literary .polaroid {
+  padding: 0;
+  border: 1px solid rgba(30, 37, 43, 0.14);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.style-literary .polaroid::before {
+  display: none;
+}
+
+.style-literary .polaroid img {
+  aspect-ratio: 1 / 0.76;
+}
+
+.style-literary .memo-note {
+  max-width: 220px;
+  border-left: 2px solid #1e252b;
+  border-radius: 0;
+  background: transparent;
+  transform: none;
+}
 @media (max-width: 390px) {
   .journal-poster {
     padding-inline: 20px;

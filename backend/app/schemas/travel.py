@@ -35,6 +35,11 @@ class TravelAIResult(BaseModel):
 class TravelRecordResponse(TravelAIResult):
     id: int
     place: str
+    city: Optional[str] = None
+    normalized_place: Optional[str] = None
+    place_confidence: Optional[str] = None
+    places: list[str] = Field(default_factory=list)
+    place_regions: list[dict[str, str]] = Field(default_factory=list)
     travel_date: date
     companion: Optional[str] = None
     mood: Optional[str] = None

@@ -19,6 +19,11 @@ class TravelRecord(Base):
 
     id: Mapped[int] = mapped_column(id_type, primary_key=True, autoincrement=True)
     place: Mapped[str] = mapped_column(String(120), nullable=False)
+    city: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    normalized_place: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    place_confidence: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    places: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)
+    place_regions: Mapped[Optional[list[dict]]] = mapped_column(JSON, nullable=True)
     travel_date: Mapped[date] = mapped_column(Date, nullable=False)
     companion: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     mood: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)

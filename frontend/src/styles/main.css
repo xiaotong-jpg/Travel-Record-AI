@@ -248,3 +248,56 @@ textarea::placeholder {
   opacity: 0;
   transform: translateY(8px);
 }
+
+.van-dialog.van-popup {
+  overflow: hidden;
+  width: min(344px, calc(100vw - 48px));
+  border: 1px solid rgba(121, 98, 70, 0.16);
+  border-radius: 14px;
+  color: #3f352d;
+  background: #fffaf1;
+  box-shadow: 0 18px 48px rgba(39, 32, 25, 0.22);
+}
+
+.van-dialog__header {
+  padding: 22px 22px 8px;
+  color: #2f2923;
+  font-size: 18px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.van-dialog__message {
+  max-height: none;
+  padding: 8px 22px 24px;
+  color: #5d5045;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.van-dialog__footer {
+  border-top: 1px solid rgba(121, 98, 70, 0.14);
+  background: #fffaf1;
+}
+
+.van-dialog .van-button {
+  height: 54px;
+  border-radius: 0;
+  background: #fffaf1;
+  font-size: 16px;
+}
+
+.van-dialog__cancel {
+  color: #123f58;
+}
+
+.van-dialog__confirm,
+.van-dialog__confirm:active {
+  color: #b85c46;
+  font-weight: 650;
+}
+
+.van-overlay {
+  background: rgba(35, 31, 27, 0.58);
+  backdrop-filter: blur(2px);
+}

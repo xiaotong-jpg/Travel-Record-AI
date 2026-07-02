@@ -15,6 +15,9 @@
     <van-pull-refresh v-model="refreshing" @refresh="loadRecords">
       <section v-if="records.length" class="memory-list">
         <article v-for="item in records" :key="item.id" class="soft-card memory-card" @click="goDetail(item.id)">
+          <button class="delete-btn" type="button" aria-label="删除日志" @click.stop="confirmDelete(item)">
+            <van-icon name="delete-o" />
+          </button>
           <p class="card-meta">{{ item.place }} · {{ item.travel_date }}</p>
           <h2 class="card-title">{{ item.title }}</h2>
           <div class="tag-row">
@@ -30,9 +33,9 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { showToast } from 'vant'
+import { showConfirmDialog, showToast } from 'vant'
 import { useRouter } from 'vue-router'
-import { listTravels } from '../services/api'
+import { deleteTravel, listTravels } from '../services/api'
 
 const router = useRouter()
 const records = ref([])
@@ -44,6 +47,24 @@ function summary(text = '') {
 
 function goDetail(id) {
   router.push(`/travel/${id}`)
+}
+
+async function confirmDelete(item) {
+  try {
+    await showConfirmDialog({
+      title: '删除日志',
+      message: `确定删除「${item.title}」吗？删除后无法在列表中恢复。`,
+      confirmButtonText: '删除',
+      confirmButtonColor: '#b85c46',
+      cancelButtonText: '取消'
+    })
+    await deleteTravel(item.id)
+    records.value = records.value.filter((record) => record.id !== item.id)
+    showToast('已删除')
+  } catch (error) {
+    if (error === 'cancel') return
+    showToast(error?.response?.data?.detail || '删除失败')
+  }
 }
 
 async function loadRecords() {
@@ -93,5 +114,31 @@ onMounted(loadRecords)
 
 .memory-card {
   cursor: pointer;
+  padding-right: 52px;
+}
+
+.delete-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(184, 92, 70, 0.24);
+  border-radius: 50%;
+  color: #b85c46;
+  background: rgba(255, 250, 241, 0.78);
+  box-shadow: 0 6px 16px rgba(83, 67, 49, 0.08);
+}
+
+.delete-btn .van-icon {
+  font-size: 17px;
+}
+
+.delete-btn:active {
+  transform: scale(0.96);
 }
 </style>

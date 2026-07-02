@@ -47,7 +47,7 @@
         type="textarea"
         @keyup.enter="send"
       />
-      <van-button round type="primary" :loading="sending" @click="send">发送</van-button>
+      <van-button round type="primary" :loading="sending" loading-text="思考中" @click="send">发送</van-button>
       <van-button round class="generate-btn" :loading="generating" @click="generate">生成手账</van-button>
     </div>
   </main>

@@ -17,6 +17,9 @@ export function getTravel(id) {
   return http.get(`/travel/${id}`)
 }
 
+export function deleteTravel(id) {
+  return http.delete(`/travel/${id}`)
+}
 export function generateTravelPoster(id, style) {
   return http.post(`/travel/${id}/generate-poster`, { style })
 }

@@ -24,6 +24,11 @@ def ensure_schema_compat() -> None:
     if dialect == "mysql":
         additions = {
             "source_type": "ADD COLUMN source_type VARCHAR(20) NOT NULL DEFAULT 'form'",
+            "city": "ADD COLUMN city VARCHAR(80) NULL",
+            "normalized_place": "ADD COLUMN normalized_place VARCHAR(120) NULL",
+            "place_confidence": "ADD COLUMN place_confidence VARCHAR(20) NULL",
+            "places": "ADD COLUMN places JSON NULL",
+            "place_regions": "ADD COLUMN place_regions JSON NULL",
             "chat_session_id": "ADD COLUMN chat_session_id VARCHAR(80) NULL",
             "image_urls": "ADD COLUMN image_urls JSON NULL",
             "hand_account_layout": "ADD COLUMN hand_account_layout JSON NULL",
@@ -32,6 +37,11 @@ def ensure_schema_compat() -> None:
     else:
         additions = {
             "source_type": "ADD COLUMN source_type VARCHAR(20) NOT NULL DEFAULT 'form'",
+            "city": "ADD COLUMN city VARCHAR(80)",
+            "normalized_place": "ADD COLUMN normalized_place VARCHAR(120)",
+            "place_confidence": "ADD COLUMN place_confidence VARCHAR(20)",
+            "places": "ADD COLUMN places JSON",
+            "place_regions": "ADD COLUMN place_regions JSON",
             "chat_session_id": "ADD COLUMN chat_session_id VARCHAR(80)",
             "image_urls": "ADD COLUMN image_urls JSON",
             "hand_account_layout": "ADD COLUMN hand_account_layout JSON",

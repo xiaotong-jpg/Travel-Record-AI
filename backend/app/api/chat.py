@@ -11,8 +11,10 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.travel import ChatSession, TravelRecord
 from app.schemas.travel import ChatMessageRequest, ChatMessageResponse, TravelGenerateRequest, TravelRecordResponse
-from app.services.travel_memory import infer_travel_info, missing_fields, next_question
+from app.services.travel_memory import missing_fields
 from app.services.vivo_ai import call_vivo_travel, today_as_date
+from app.services.vivo_chat_agent import chat_as_travel_agent
+from app.services.place_normalizer import normalize_place
 from app.api.travel import to_response
 
 router = APIRouter()
@@ -37,11 +39,10 @@ def _get_or_create_session(db: Session, session_id: str | None) -> ChatSession:
 async def chat_message(payload: ChatMessageRequest, db: Session = Depends(get_db)) -> ChatMessageResponse:
     session = _get_or_create_session(db, payload.session_id)
     messages = list(session.messages_json or [])
-    travel_info = infer_travel_info(payload.message, session.travel_info_json or {})
     messages.append({"role": "user", "content": payload.message})
 
+    reply, travel_info = await chat_as_travel_agent(payload.message, messages, session.travel_info_json or {})
     missing = missing_fields(travel_info)
-    reply = next_question(travel_info)
     ready = not missing
     messages.append({"role": "assistant", "content": reply})
 
@@ -98,12 +99,18 @@ async def generate_travel_log(
     )
     try:
         ai_result, raw_response = await call_vivo_travel(payload, image_urls)
+        place_info = await normalize_place(payload.place, f"{payload.memory}\n{ai_result.content}")
     except HTTPException:
         raise
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"旅行手账生成失败：{exc}") from exc
     record = TravelRecord(
         place=payload.place,
+        city=place_info.city,
+        normalized_place=place_info.normalized_place,
+        place_confidence=place_info.confidence,
+        places=place_info.places,
+        place_regions=place_info.place_regions,
         travel_date=payload.travel_date,
         companion=payload.companion,
         mood=payload.mood,

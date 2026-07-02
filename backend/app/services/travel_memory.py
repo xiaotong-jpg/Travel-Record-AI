@@ -63,3 +63,12 @@ def next_question(info: dict) -> str:
     if "style" not in info:
         return "最后想生成什么风格？手账风 / 明信片风 / 朋友圈风 / 小红书风 / 电影旁白风 / 简洁记录风。"
     return "这一刻值得被写进回忆里。我已经整理好了，可以生成旅行手账了。"
+
+
+def merge_travel_info(current: dict, patch: dict | None) -> dict:
+    info = dict(current or {})
+    for key, value in (patch or {}).items():
+        if key in REQUIRED_FIELDS + ["travel_date"] and value is not None:
+            info[key] = str(value).strip()
+    info.setdefault("style", "手账风")
+    return info

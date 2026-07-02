@@ -15,14 +15,21 @@ from app.schemas.travel import (
 )
 from app.services.vivo_ai import call_vivo_travel, call_vivo_year_summary
 from app.services.vivo_image import generate_travel_poster
+from app.services.place_normalizer import normalize_place, normalize_place_local
 
 router = APIRouter()
 
 
 def to_response(record: TravelRecord) -> TravelRecordResponse:
+    normalized = normalize_place_local(record.place, record.content)
     data = {
         "id": record.id,
         "place": record.place,
+        "city": record.city or normalized.city,
+        "normalized_place": record.normalized_place or normalized.normalized_place,
+        "place_confidence": record.place_confidence or normalized.confidence,
+        "places": record.places or normalized.places or ([record.city] if record.city else []),
+        "place_regions": record.place_regions or normalized.place_regions,
         "travel_date": record.travel_date,
         "companion": record.companion,
         "mood": record.mood,
@@ -51,8 +58,14 @@ def to_response(record: TravelRecord) -> TravelRecordResponse:
 @router.post("/generate", response_model=TravelRecordResponse)
 async def generate_travel(payload: TravelGenerateRequest, db: Session = Depends(get_db)) -> TravelRecordResponse:
     ai_result, raw_response = await call_vivo_travel(payload)
+    place_info = await normalize_place(payload.place, f"{payload.memory}\n{ai_result.content}")
     record = TravelRecord(
         place=payload.place,
+        city=place_info.city,
+        normalized_place=place_info.normalized_place,
+        place_confidence=place_info.confidence,
+        places=place_info.places,
+        place_regions=place_info.place_regions,
         travel_date=payload.travel_date,
         companion=payload.companion,
         mood=payload.mood,
@@ -90,6 +103,17 @@ def get_travel(record_id: int, db: Session = Depends(get_db)) -> TravelRecordRes
     if not record:
         raise HTTPException(status_code=404, detail="旅行记录不存在")
     return to_response(record)
+
+
+
+@router.delete("/{record_id}")
+def delete_travel(record_id: int, db: Session = Depends(get_db)) -> dict[str, bool]:
+    record = db.get(TravelRecord, record_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="旅行记录不存在")
+    db.delete(record)
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("/{record_id}/generate-poster", response_model=TravelPosterGenerateResponse)
