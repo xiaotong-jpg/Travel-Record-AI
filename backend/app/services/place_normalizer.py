@@ -217,7 +217,7 @@ async def normalize_place(place: str | None, context: str | None = None) -> Norm
 
     prompt = f"""请判断这篇中文旅行日志涉及哪些省份和城市，并只返回 JSON。
 要求：
-1. 单城市日志返回一个 place_regions 项，例如玉龙雪山必须识别为 {"province":"云南", "city":"丽江"}。
+1. 单城市日志返回一个 place_regions 项，例如玉龙雪山必须识别为 {{"province":"云南", "city":"丽江"}}。
 2. 如果用户提到多个城市或多省旅程，place_regions 返回所有涉及的省份/城市。
 3. 如果只提到省份没有具体城市，city 可等于 province。
 4. 如果地点是景点、街区、公园、寺庙、商圈，请推断它所在省份和城市。
