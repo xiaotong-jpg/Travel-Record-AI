@@ -1,3 +1,9 @@
+---
+title: AI Travel Memory Assistant
+sdk: docker
+app_port: 7860
+pinned: false
+---
 # AI 旅行记忆助手 MVP
 
 手机端风格的 AI 旅行日志应用。前端使用 Vue3 + Vite + Vant UI，后端使用 FastAPI，数据保存到 MySQL，vivo 大模型 AppKey 只放在后端 `.env`。

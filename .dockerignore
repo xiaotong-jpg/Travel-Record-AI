@@ -1,0 +1,15 @@
+.git
+.gitignore
+.venv/
+venv/
+**/__pycache__/
+**/*.py[cod]
+**/.env
+**/node_modules/
+frontend/dist/
+backend/*.db
+backend/uploads/*
+!backend/uploads/.gitkeep
+*.log
+.docx_extract*/
+.DS_Store

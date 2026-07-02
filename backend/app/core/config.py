@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "AI 旅行记忆助手"
     env: str = "development"
-    database_url: str
+    database_url: str = "sqlite:///./data/travel_memory.db"
     vivo_app_key: str = ""
     vivo_api_base: str = "https://api-ai.vivo.com.cn/v1"
     vivo_model: str = "Doubao-Seed-2.0-mini"

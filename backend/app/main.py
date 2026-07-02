@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy import inspect, text
 
 from app.api.chat import router as chat_router
@@ -81,6 +82,24 @@ def create_app() -> FastAPI:
     app.include_router(travel_router, prefix="/api/travel", tags=["travel"])
     app.include_router(chat_router, prefix="/api/chat", tags=["chat"])
     app.include_router(recommend_router, prefix="/api/recommend", tags=["recommend"])
+
+    frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+    if frontend_dist.exists():
+        assets_dir = frontend_dist / "assets"
+        if assets_dir.exists():
+            app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="frontend-assets")
+
+        @app.get("/", include_in_schema=False)
+        def serve_index() -> FileResponse:
+            return FileResponse(frontend_dist / "index.html")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        def serve_spa(full_path: str) -> FileResponse:
+            requested_file = frontend_dist / full_path
+            if requested_file.is_file():
+                return FileResponse(requested_file)
+            return FileResponse(frontend_dist / "index.html")
+
     return app
 
 
