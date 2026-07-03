@@ -167,7 +167,7 @@ async def generate_travel_poster(record: TravelRecordResponse, style: str) -> st
         "model": settings.vivo_image_model,
         "prompt": _record_prompt(record, style),
         "parameters": {
-            "size": "1K",
+            "size": "2048x2048",
             "watermark": False,
             "prompt_extend": False,
             "sequential_image_generation": "disabled",
