@@ -68,6 +68,17 @@ class TravelPosterGenerateResponse(BaseModel):
     image_url: str
 
 
+class TravelPosterJobCreateResponse(BaseModel):
+    job_id: str
+    status: str
+
+
+class TravelPosterJobStatusResponse(BaseModel):
+    job_id: str
+    status: str
+    image_url: Optional[str] = None
+    error: Optional[str] = None
+
 class ChatMessageRequest(BaseModel):
     session_id: Optional[str] = None
     message: str = Field(..., min_length=1)

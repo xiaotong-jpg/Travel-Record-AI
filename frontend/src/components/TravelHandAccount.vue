@@ -105,7 +105,7 @@ import { computed, ref } from 'vue'
 import { closeToast, showLoadingToast, showToast } from 'vant'
 import { useRouter } from 'vue-router'
 import html2canvas from 'html2canvas'
-import { generateTravelPoster } from '../services/api'
+import { getTravelPosterJob, startTravelPosterJob } from '../services/api'
 
 const props = defineProps({ record: { type: Object, required: true } })
 const router = useRouter()
@@ -193,16 +193,40 @@ function selectStyle(styleName) {
   selectedStyle.value = styleName
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+async function waitPosterJob(jobId) {
+  const maxAttempts = 60
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const { data } = await getTravelPosterJob(jobId)
+    if (data.status === 'succeeded' && data.image_url) return data
+    if (data.status === 'failed') {
+      throw new Error(data.error || 'AI 图片生成失败')
+    }
+    await sleep(attempt < 6 ? 3000 : 5000)
+  }
+  throw new Error('AI 图片还在生成中，请稍后重新打开这篇日志查看')
+}
+
 async function generatePosterWithStyle(styleName) {
   generating.value = true
+  showLoadingToast({
+    message: 'AI 图片日志生成中，可能需要 1-3 分钟...',
+    duration: 0,
+    forbidClick: false
+  })
   try {
-    const { data } = await generateTravelPoster(props.record.id, styleName)
-    posterUrl.value = data.image_url
+    const { data } = await startTravelPosterJob(props.record.id, styleName)
+    const result = await waitPosterJob(data.job_id)
+    posterUrl.value = result.image_url
     generatedStyle.value = styleName
     showToast(`${styleName}图片日志已生成`)
   } catch (error) {
-    showToast(error?.response?.data?.detail || 'AI 图片生成失败，请检查模型权限')
+    showToast(error?.response?.data?.detail || error?.message || 'AI 图片生成失败，请检查模型权限')
   } finally {
+    closeToast()
     generating.value = false
   }
 }

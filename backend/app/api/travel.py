@@ -1,15 +1,19 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+import uuid
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.database import SessionLocal, get_db
 from app.models.travel import TravelRecord
 from app.schemas.travel import (
     TravelGenerateRequest,
     TravelPosterGenerateRequest,
     TravelPosterGenerateResponse,
+    TravelPosterJobCreateResponse,
+    TravelPosterJobStatusResponse,
     TravelRecordResponse,
     YearSummaryResponse,
 )
@@ -19,6 +23,37 @@ from app.services.place_normalizer import normalize_place, normalize_place_local
 
 router = APIRouter()
 
+POSTER_JOBS: dict[str, dict[str, str | None]] = {}
+MAX_POSTER_JOBS = 100
+
+
+def _set_poster_job(job_id: str, **updates: str | None) -> None:
+    job = POSTER_JOBS.setdefault(job_id, {"job_id": job_id, "status": "pending", "image_url": None, "error": None})
+    job.update(updates)
+    if len(POSTER_JOBS) > MAX_POSTER_JOBS:
+        for old_id in list(POSTER_JOBS.keys())[: len(POSTER_JOBS) - MAX_POSTER_JOBS]:
+            POSTER_JOBS.pop(old_id, None)
+
+
+async def _run_poster_job(job_id: str, record_id: int, style: str) -> None:
+    _set_poster_job(job_id, status="running", error=None)
+    db = SessionLocal()
+    try:
+        record = db.get(TravelRecord, record_id)
+        if not record:
+            _set_poster_job(job_id, status="failed", error="旅行记录不存在")
+            return
+        image_url = await generate_travel_poster(to_response(record), style)
+        record.exported_long_image_url = image_url
+        record.style = style
+        db.commit()
+        _set_poster_job(job_id, status="succeeded", image_url=image_url, error=None)
+    except HTTPException as exc:
+        _set_poster_job(job_id, status="failed", error=str(exc.detail))
+    except Exception as exc:
+        _set_poster_job(job_id, status="failed", error=f"AI 图片日志生成失败：{exc}")
+    finally:
+        db.close()
 
 def to_response(record: TravelRecord) -> TravelRecordResponse:
     normalized = normalize_place_local(record.place, record.content)
@@ -96,6 +131,31 @@ def list_travel(db: Session = Depends(get_db)) -> list[TravelRecordResponse]:
     records = db.scalars(select(TravelRecord).order_by(TravelRecord.created_at.desc())).all()
     return [to_response(record) for record in records]
 
+
+@router.get("/poster-jobs/{job_id}", response_model=TravelPosterJobStatusResponse)
+def get_poster_job(job_id: str) -> TravelPosterJobStatusResponse:
+    job = POSTER_JOBS.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="AI 图片日志任务不存在或已过期")
+    return TravelPosterJobStatusResponse(**job)
+
+
+@router.post("/{record_id}/generate-poster-job", response_model=TravelPosterJobCreateResponse)
+def create_poster_job(
+    record_id: int,
+    payload: TravelPosterGenerateRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> TravelPosterJobCreateResponse:
+    record = db.get(TravelRecord, record_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="旅行记录不存在")
+    if not (record.image_urls or []):
+        raise HTTPException(status_code=400, detail="请先上传至少一张旅行图片，再生成 AI 图片日志")
+    job_id = uuid.uuid4().hex
+    _set_poster_job(job_id, status="pending", image_url=None, error=None)
+    background_tasks.add_task(_run_poster_job, job_id, record_id, payload.style)
+    return TravelPosterJobCreateResponse(job_id=job_id, status="pending")
 
 @router.get("/{record_id}", response_model=TravelRecordResponse)
 def get_travel(record_id: int, db: Session = Depends(get_db)) -> TravelRecordResponse:

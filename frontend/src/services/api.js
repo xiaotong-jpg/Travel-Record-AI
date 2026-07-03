@@ -20,10 +20,18 @@ export function getTravel(id) {
 export function deleteTravel(id) {
   return http.delete(`/travel/${id}`)
 }
+
 export function generateTravelPoster(id, style) {
   return http.post(`/travel/${id}/generate-poster`, { style })
 }
 
+export function startTravelPosterJob(id, style) {
+  return http.post(`/travel/${id}/generate-poster-job`, { style })
+}
+
+export function getTravelPosterJob(jobId) {
+  return http.get(`/travel/poster-jobs/${jobId}`)
+}
 export function getYearSummary() {
   return http.post('/travel/year-summary')
 }
