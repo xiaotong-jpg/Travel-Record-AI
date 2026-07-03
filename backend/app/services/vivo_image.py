@@ -124,7 +124,7 @@ def _local_upload_to_data_url(image_url: str) -> str | None:
 
 def _image_inputs(record: TravelRecordResponse) -> list[str]:
     images: list[str] = []
-    for image_url in (record.image_urls or [])[:4]:
+    for image_url in (record.image_urls or [])[:1]:
         if image_url.startswith(("http://", "https://")):
             images.append(image_url)
             continue
@@ -167,7 +167,7 @@ async def generate_travel_poster(record: TravelRecordResponse, style: str) -> st
         "model": settings.vivo_image_model,
         "prompt": _record_prompt(record, style),
         "parameters": {
-            "size": "2K",
+            "size": "1K",
             "watermark": False,
             "prompt_extend": False,
             "sequential_image_generation": "disabled",
@@ -187,14 +187,23 @@ async def generate_travel_poster(record: TravelRecordResponse, style: str) -> st
         "system_time": int(time.time()),
     }
 
-    async with httpx.AsyncClient(timeout=120) as client:
-        response = await client.post(url, headers=headers, params=params, json=payload)
+    response: httpx.Response | None = None
+    async with httpx.AsyncClient(timeout=180) as client:
+        for attempt in range(2):
+            response = await client.post(url, headers=headers, params=params, json=payload)
+            if response.status_code not in {500, 502, 503, 504}:
+                break
+            if attempt == 0:
+                params["request_id"] = str(uuid.uuid4())
+                params["system_time"] = int(time.time())
+                continue
 
     try:
         response.raise_for_status()
         data = response.json()
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"图像生成接口响应异常：{response.text[:500]}") from exc
+        detail = response.text[:500] if response is not None else "empty response"
+        raise HTTPException(status_code=502, detail=f"图像生成接口响应异常：{detail}") from exc
 
     if data.get("code") not in {0, None}:
         raise HTTPException(status_code=502, detail=f"图像生成失败：{data.get('message') or data.get('msg') or data.get('error_msg') or data.get('code')}")
