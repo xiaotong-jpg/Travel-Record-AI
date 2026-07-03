@@ -84,6 +84,7 @@
           <span>{{ style.name }}</span>
         </button>
       </div>
+      <p v-if="posterJobMessage" class="poster-job-status">{{ posterJobMessage }}</p>
       <div class="action-row">
         <van-button round icon="edit" class="edit-btn" @click="router.push('/chat-generate')">继续创作</van-button>
         <van-button round icon="photograph" type="primary" class="save-btn" :loading="generating" @click="generatePoster">
@@ -115,6 +116,7 @@ const generating = ref(false)
 const posterUrl = ref('')
 const selectedStyle = ref(props.record.style || '手账风')
 const generatedStyle = ref('')
+const posterJobMessage = ref('')
 const canUsePoster = computed(() => Boolean(posterUrl.value))
 const layoutClass = computed(() => {
   const explicit = props.record.hand_account_layout?.template
@@ -198,13 +200,15 @@ function sleep(ms) {
 }
 
 async function waitPosterJob(jobId) {
-  const maxAttempts = 60
+  const maxAttempts = 72
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const { data } = await getTravelPosterJob(jobId)
     if (data.status === 'succeeded' && data.image_url) return data
     if (data.status === 'failed') {
       throw new Error(data.error || 'AI 图片生成失败')
     }
+    const elapsed = attempt < 6 ? (attempt + 1) * 3 : 18 + (attempt - 5) * 5
+    posterJobMessage.value = `AI 图片日志生成中，已等待约 ${elapsed} 秒，请停留在当前页面。`
     await sleep(attempt < 6 ? 3000 : 5000)
   }
   throw new Error('AI 图片还在生成中，请稍后重新打开这篇日志查看')
@@ -212,22 +216,28 @@ async function waitPosterJob(jobId) {
 
 async function generatePosterWithStyle(styleName) {
   generating.value = true
+  posterJobMessage.value = '正在创建 AI 图片生成任务...'
   showLoadingToast({
     message: 'AI 图片日志生成中，可能需要 1-3 分钟...',
     duration: 0,
     forbidClick: false
   })
+  let successMessage = ''
   try {
     const { data } = await startTravelPosterJob(props.record.id, styleName)
+    posterJobMessage.value = '任务已创建，正在等待 vivo 图片模型返回结果...'
     const result = await waitPosterJob(data.job_id)
     posterUrl.value = result.image_url
     generatedStyle.value = styleName
-    showToast(`${styleName}图片日志已生成`)
+    posterJobMessage.value = ''
+    successMessage = `${styleName}图片日志已生成`
   } catch (error) {
-    showToast(error?.response?.data?.detail || error?.message || 'AI 图片生成失败，请检查模型权限')
+    posterJobMessage.value = error?.response?.data?.detail || error?.message || 'AI 图片生成失败，请检查模型权限'
   } finally {
     closeToast()
     generating.value = false
+    if (successMessage) showToast(successMessage)
+    else if (posterJobMessage.value) showToast({ message: posterJobMessage.value, duration: 4500 })
   }
 }
 
@@ -691,6 +701,14 @@ async function exportImage() {
 
 .style-chip span {
   font-size: 12px;
+}
+
+
+.poster-job-status {
+  margin: 12px 0 0;
+  color: #7a6b5f;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .action-row {
